@@ -202,8 +202,26 @@
       end 
 
       integer function order(number)
+         implicit none
+         real number
+         if(abs(number).LE.0.0001) then
+         order = 0
+         else
+            order = int(log10(abs(number)))
+            if (order.LT.0) then
+               order = order - 1
+            endif
+         endif
+      end
+
+      integer function ceil(number)
         implicit none
         real number
-        order = int(log10(abs(number)))
-        if (order.lt.0) order = order - 1
+        integer int_part
+        int_part = int(number)
+        if ((number - real(int_part)).gt.0) then
+          ceil = int_part + 1
+        else
+          ceil = int_part
+        endif
       end
