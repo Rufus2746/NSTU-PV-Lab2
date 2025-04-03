@@ -76,28 +76,45 @@
          real xmin, xmax, hx, ymin, ymax, hy
          real x, y
          real calculate
-         integer meanx, prevMeanx, meany, prevMeany
+         integer meanx, prevMeanx, meany, prevMeany, columns, rows, i, j
          integer order
+         integer ceil
 
          common /variables/ xmin, xmax, hx, ymin, ymax, hy
+         common /table/ columns, rows
 
          prevMeanx = 0.
          prevMeany = 0.
+         columns = ceil((xmax-xmin)/hx)
+         rows = ceil((ymax-ymin)/hy)
+         x = xmin
+         y = ymin
 
          open(2, file = '#output.txt', err = 004)
 01       format (E11.4, '|'$)
 02       format ('NOT DEFINED|', $)
 
-50       call PrintXTitle
+         call PrintXTitle
 
-         do 20 y = ymin, ymax, hy        !
+         do 20 j = 0, rows, 1
+            if(y.GT.ymax)then
+               y = ymax
+               goto 30
+            endif
+
             meany = aint(y*10.**(3-order(y)))
-            if(meany.EQ.prevMeany) goto 30
+            if(meany.EQ.prevMeany) goto 50
             prevMeany = meany
-            call PrintLine
+30          call PrintLine
 
             write(2,01) y
-            do 10 x = xmin, xmax, hx          !
+            do 10 i = 0, columns, 1
+               if(x.GE.xmax)then
+                  x = xmax
+                  write(2,01) calculate(x, y)
+                  goto 10
+               endif
+
                meanx = aint(x*10.**(3-order(x)))
                if(meanx.EQ.prevMeanx) goto 40
                prevMeanx = meanx
@@ -107,22 +124,11 @@
                else   
                   write(2,01) calculate(x, y)
                end if
-!============== Проверка на 0 в х               
-40             if ((x.LT.0).AND.((x + hx).GT.0)
-     &         .AND.((x + hx).LT.xmax)) then   
-                  write(2,01) calculate(.0, y)
-               end if
+40          x = x+hx
 10          continue
 
          write(2,*) ' '
-
-!============== Проверка на 0 в у               
-30       if ((y.LT.0).AND.((y + hy).GT.0)
-     &     .AND.((y + hy).LT.ymax)) then
-              call PrintLine
-              write(2,01) 0.
-              write(2,*) ' '
-         end if
+50       y = y+hy
 20       continue
 
          call PrintLine
@@ -138,49 +144,55 @@
          implicit none
          real xmin, xmax, hx, ymin, ymax, hy
          real x
-         integer meanx, prevMeanx
+         integer meanx, prevMeanx, columns, rows, i
          integer order
          common /variables/ xmin, xmax, hx, ymin, ymax, hy
+         common /table/ columns, rows
          prevMeanx = 0.
+         x = xmin
+
 01       format (E11.4, '|'$)
 02       format (4X, A, 4X,'|'$)
 
          write (2, 02) 'y\x'
-         do 30 x = xmin, xmax, hx                !
+         do 30 i=0, columns, 1
+            if(x.GE.xmax)then
+               x=xmax
+               goto 40
+            endif
+
             meanx = aint(x*10.**(3-order(x)))
             if(meanx.EQ.prevMeanx) goto 30
             prevMeanx = meanx
-            write(2, 01) x
-            if ((x.LT.0).AND.((x + hx).GT.0)
-     &      .AND.((x + hx).LT.xmax)) then   
-               write(2, 01) .0
-            end if
+
+40          write(2, 01) x
+         x = x+hx
 30       continue
          write(2,*) ' '
       end
 
       subroutine PrintLine
-        implicit none
-        real xmin, xmax, hx, ymin, ymax, hy
-        real x
-         integer meanx, prevMeanx
+         implicit none
+         real xmin, xmax, hx, ymin, ymax, hy
+         real x
+         integer meanx, prevMeanx, columns, rows, i
          integer order
-        common /variables/ xmin, xmax, hx, ymin, ymax, hy
+         common /variables/ xmin, xmax, hx, ymin, ymax, hy
+         common /table/ columns, rows
          prevMeanx = 0.
+         x = xmin
 
-01      format ('-----------|',$)
+01       format ('-----------|',$)
 
-        do 40 x = xmin, xmax, hx
+         do 40 i=0, columns+1, 1
             meanx = aint(x*10.**(3-order(x)))
             if(meanx.EQ.prevMeanx) goto 40
             prevMeanx = meanx
-           if ((x.LT.0).AND.((x + hx).GT.0)
-     &     .AND.((x + hx).LT.xmax)) then   
-              write(2, 01)
-           end if
-           write (2, 01)
-40      continue
-        write(2,*) ' '
+
+            write (2, 01)
+            x = x+hx
+40       continue
+         write(2,*) ' '
       end
 
       real function DegreesToRads(r)
