@@ -76,62 +76,84 @@
          real xmin, xmax, hx, ymin, ymax, hy
          real x, y
          real calculate
+         logical isTooBig, xFlag, yFlag
          integer meanx, prevMeanx, meany, prevMeany, columns, rows, i, j
+         integer p
          integer order
          integer ceil
 
          common /variables/ xmin, xmax, hx, ymin, ymax, hy
          common /table/ columns, rows
 
-         prevMeanx = 0.
-         prevMeany = 0.
-         columns = ceil((xmax-xmin)/hx)
-         rows = ceil((ymax-ymin)/hy)
-         x = xmin
-         y = ymin
-
          open(2, file = '#output.txt', err = 004)
 01       format (E11.4, '|'$)
 02       format ('NOT DEFINED|', $)
+
+25       prevMeanx = 0.
+         prevMeany = 0.
+         xFlag = .false.
+         yFlag = .false.
+         columns = ceil((xmax-xmin)/hx)
+         rows = ceil((ymax-ymin)/hy)
+         y = ymin
+         isTooBig = .false.
 
          call PrintXTitle
 
          do 20 j = 0, rows, 1
             if(y.GT.ymax)then
                y = ymax
+               yFlag = .true.
                goto 30
             endif
 
-            meany = aint(y*10.**(3-order(y)))
-            if(meany.EQ.prevMeany) goto 50
-            prevMeany = meany
-30          call PrintLine
+            if(.NOT.yFlag)then
+               meany = aint(y*10.**(3-order(y)))
+               if(meany.EQ.prevMeany) goto 50
+               prevMeany = meany
+            endif   
 
-            write(2,01) y
+30          write(2,01) y
+            x = xmin
+            p = 1
             do 10 i = 0, columns, 1
+               if(p.GT.14) then
+                  isTooBig = .true.
+                  p = p-1
+                  goto 15
+               endif
                if(x.GE.xmax)then
                   x = xmax
+                  xFlag = .true.
                   write(2,01) calculate(x, y)
                   goto 10
                endif
 
-               meanx = aint(x*10.**(3-order(x)))
-               if(meanx.EQ.prevMeanx) goto 40
-               prevMeanx = meanx
+               if(.NOT.xFlag)then
+                  meanx = aint(x*10.**(3-order(x)))
+                  if(meanx.EQ.prevMeanx) goto 40
+                  prevMeanx = meanx
+               endif
 
                if (abs(mod(y, 180.)).LE.0.001) then
                   write(2,02)
                else   
                   write(2,01) calculate(x, y)
                end if
-40          x = x+hx
+               p = p+1
+40             x = x+hx
 10          continue
 
-         write(2,*) ' '
-50       y = y+hy
+15          write(2,*) ' '
+50          y = y+hy
+            call PrintLine(p)
 20       continue
 
-         call PrintLine
+         write(2,*) ' '
+         if (isTooBig) then
+            xmin = x
+            goto 25
+         endif
          close(2)
          return
 
@@ -144,53 +166,51 @@
          implicit none
          real xmin, xmax, hx, ymin, ymax, hy
          real x
-         integer meanx, prevMeanx, columns, rows, i
+         integer meanx, prevMeanx, columns, rows, i, p
          integer order
+         integer ceil
+         integer cur_columns
          common /variables/ xmin, xmax, hx, ymin, ymax, hy
          common /table/ columns, rows
-         prevMeanx = 0.
-         x = xmin
+         
 
 01       format (E11.4, '|'$)
 02       format (4X, A, 4X,'|'$)
-
+         prevMeanx = 0.
+         x = xmin
+         cur_columns = ceil((xmax-xmin)/hx)
+         p = 1
          write (2, 02) 'y\x'
-         do 30 i=0, columns, 1
+         do 30 i=0, cur_columns, 1
+            if (p.GT.14) then
+               goto 50
+            endif
             if(x.GE.xmax)then
                x=xmax
                goto 40
             endif
 
             meanx = aint(x*10.**(3-order(x)))
-            if(meanx.EQ.prevMeanx) goto 30
+            if(meanx.EQ.prevMeanx) then
+               goto 35
+            endif
             prevMeanx = meanx
-
+            
 40          write(2, 01) x
-         x = x+hx
+            p = p+1
+35          x = x+hx
 30       continue
-         write(2,*) ' '
+50       write(2,*) ' '
+         call PrintLine(p-1)
       end
-
-      subroutine PrintLine
+      
+      subroutine PrintLine(p)
          implicit none
-         real xmin, xmax, hx, ymin, ymax, hy
-         real x
-         integer meanx, prevMeanx, columns, rows, i
-         integer order
-         common /variables/ xmin, xmax, hx, ymin, ymax, hy
-         common /table/ columns, rows
-         prevMeanx = 0.
-         x = xmin
+         integer i, p
 
 01       format ('-----------|',$)
-
-         do 40 i=0, columns+1, 1
-            meanx = aint(x*10.**(3-order(x)))
-            if(meanx.EQ.prevMeanx) goto 40
-            prevMeanx = meanx
-
+         do 40 i=0, p, 1
             write (2, 01)
-            x = x+hx
 40       continue
          write(2,*) ' '
       end
@@ -231,7 +251,7 @@
         real number
         integer int_part
         int_part = int(number)
-        if ((number - real(int_part)).gt.0) then
+        if ((number - real(int_part)).GT.0) then
           ceil = int_part + 1
         else
           ceil = int_part
